@@ -1,3 +1,4 @@
+import aiohttp
 import argparse
 import jinja2
 import toml
@@ -10,6 +11,14 @@ import aiohttp_jinja2
 @aiohttp_jinja2.template('index.html')
 async def index(request):
     pass
+
+
+async def get_api(request):
+    language = request.match_info['language']
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f"https://gitignore.io/api/{language}") as resp:
+            resp_text = await resp.text()
+            return web.Response(body=resp_text)
 
 
 app = web.Application()
@@ -27,20 +36,10 @@ aiohttp_jinja2.setup(
 
 
 app.router.add_get('/', index)
+app.router.add_get('/get-api/{language}', get_api)
 if app['config']['debug']:
         app.router.add_static(
             '/static/', path='../static', name='static')
-
-cors = aiohttp_cors.setup(app, defaults={
-    '*': aiohttp_cors.ResourceOptions(
-        allow_credentials=True,
-        expose_headers='*',
-        allow_headers='*')
-})
-
-print(cors)
-for route in list(app.router.routes()):
-    cors.add(route)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='gitignoreyo')
